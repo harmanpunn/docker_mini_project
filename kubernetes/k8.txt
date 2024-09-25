@@ -1,0 +1,287 @@
+What features do orchestration tools offer?
+- High availability
+- Scalability - horizontal and vertical
+- Disaster recovery - backup and restore
+- Load balancing
+
+
+Kubernetes Components
+- Worker node
+- Pod 
+    - smallest unit of deployment
+    - abstraction over container
+    - usually one application per pod
+    - Each pod has its own IP address
+- Service
+    - Permanent IP address
+    - Lifecycle of a pod is not tied to the lifecycle of a service
+    - External service: Exposes the service to the outside world
+    - Internal service: Exposes the service to the internal network
+    - Service has 2 functionalities: permanent IP and load balancing
+- Ingress
+    - Exposes HTTP and HTTPS routes from outside the cluster to services within the cluster
+- ConfigMap
+    - External configuration for the application. Like urls of db or other services
+    - Dont put sensitive data here
+- Secret
+    - Sensitive data like passwords, tokens, keys
+    - Encoded in base64
+- Volume
+    - Storage for the pod
+    - Persistent volume: Data is retained even after the pod is deleted
+    - EmptyDir: Data is deleted when the pod is deleted
+    - Attaches physical storage on a hard drive to a pod    
+    - Could be local or remote (outside of k8 cluster)
+    - k8s doesnt manage the storage, it just attaches it to the pod
+- Replicate
+    - Ensures that a specified number of pod replicas are running at any given time
+    - If a pod fails, it creates a new one
+    - The replica is connected to the same service
+- Deployment
+    - Define blue print for the pods
+    - Defines how many replicas should be running
+    - We create deployments not pods
+    - Deployment creates pods
+    - Deployment is a higher level of abstraction than a replica
+    - However, DB can't be replicated via Deployment. Because it has state. It can't be replicated
+- StatefulSet
+    - For stateful applications like DB
+    - Ensures that each pod has a unique identity
+    - Deploying stateful application is more complex than deploying stateless application
+
+
+Kubernetes Architecture
+3 Node processes
+- Kubelet
+    - Agent that runs on each node in the cluster
+    - Ensures that containers are running in a pod
+    - Communicates with the master node
+- Kube-proxy
+    - Network proxy that runs on each node in the cluster
+    - Maintains network rules on nodes
+    - Enables network communication to the pods from network sessions inside or outside of the cluster
+- Container runtime
+    - Software that is responsible for running containers
+    - Docker, containerd, CRI-O
+
+- Master Node
+    - API server
+        - Front end for k8s control plane
+        - Exposes k8s API
+        - Consumes JSON or YAML
+        - Cluster gateway
+        - Acts as a gatekeeper for authentication and authorization
+    - Scheduler
+        - Assigns pods to nodes
+        - Based on resource requirements, quality of service requirements, policies, data locality, affinity and anti-affinity
+        - Decides which node to run the pod on
+        - Schedule just decides on which node the new pod should be scheduled
+        - It is kubelet that actually runs the pod
+    - Controller manager
+        - Runs controller processes
+        - Node controller: Responsible for noticing and responding when nodes go down
+        - Replication controller: Responsible for maintaining the correct number of pods for every replication controller object in the system
+        - Endpoints controller: Populates the Endpoints object
+        - Service account and token controller: Creates default accounts and API access tokens for new namespaces
+        - Detects cluster state changes like crashing of pods 
+        - When pods die controller manager detects that and reaches out to the scheduler to schedule a new pod --> scheduler reaches out to kubelet to create a new pod
+    - etcd
+        - Consistent and highly-available key value store used as k8s backing store for all cluster data
+        - Cluster brain: Cluster changes get stored in the key value store
+        - Application data is not stored here
+
+- Master nodes needs less resources than worker nodes because it is the worker nodes that run the actual containers
+- Replicaset is  managing the replicas of a Pod
+
+What is minikube?
+- Local k8s environment
+- Single node k8s cluster inside a VM on your local machine where master and node processes run on ONE machine
+- Good for development and testing
+- Not for production  
+- Docker run-time pre installed
+
+What is kubectl?
+- Command line tool to interact with k8s cluster
+- Run commands to deploy and manage applications on k8s cluster
+- kubectl run nginx --image=nginx
+- kubectl get pods
+- kubectl get nodes
+
+
+
+Creating a pod
+- We create deployments not pods
+- kubectl create deployment nginx-depl --image=nginx
+- Deployment has all the information about the pod
+
+
+Configuration file in k8s
+- YAML file
+- Each configuration has 3 parts
+    - Metadata
+    - Specification
+    - Status: Not in the configuration file. It is the current state of the object. K8s will always compare the desired state with the current state and make changes to the current state to make it the desired state
+        - Self healing: If a pod dies, k8s will create a new pod to make the current state the desired state
+        - Where does k8s get this status from? From the etcd key value store
+        - Etcd holds the current status of any k8s Components
+- Store the config file in your code repository
+
+
+What is a Namespace?
+- Virtual cluster inside a k8s cluster
+- 4 namespaces are created by default
+    - Default: If you dont specify a namespace, it goes to default
+    - kube-system: K8s system components
+    - kube-public: Contains public information about the cluster
+    - kube-node-lease: Heartbeat between the nodes and the master
+- kubectl get namespaces
+- kubectl create namespace my-namespace
+- Other way to create a namespace is to create a namespace in the config file and apply it
+
+
+Why to use namespaces?
+- Resources can be grouped together
+- For example:
+    - Database namespace can have all the DB related resources
+    - Frontend namespace can have all the frontend related resources
+    - Monitoring namespace can have all the monitoring related resources
+- Multiple teams can use the same k8s cluster. Many teams, same applications
+- For example:
+    - Team A can have their own namespace
+    - Team B can have their own namespace
+    - Team C can have their own namespace
+- Resource Sharing: Staging and Development
+- For example:
+    - Staging namespace
+    - Development namespace
+- Resource Sharing: Blue/Green deployment
+- Access and Resoruce Limits on Namespaces. Each team have their own isolated environment
+- For example:
+    - Team A can have access to their namespace only
+    - Team B can have access to their namespace only
+    - Team C can have access to their namespace only
+- Resource Quotas: Limit the amount of resources that can be used in a namespace
+- You can't access most of the resources in a namespace if you are not in that namespace
+- Volume and node live globally in a cluster. They are not namespaced. They are cluster wide resources
+
+
+K8s Ingress
+- Exposes HTTP and HTTPS routes from outside the cluster to services within the cluster 
+- Request from the browser goes to the Ingress controller > Ingress to the internal service > Service to the pod
+- We have to install ingress controller
+    - Evaluates all the rules
+    - Managers redirections
+
+
+Helm explained
+- Package manager for k8s
+    - Package YAML files
+- Helps you define, install and upgrade k8s applications
+- Helm chart
+    - Bundle of YAML files
+    - Create your own Helm Charts with Helm
+    - Push them to Helm repository
+    - Download and use existing ones
+- Templating Engine
+    - Define a common blueprint
+    - Dynamic values are repaced by placeholders
+    - Values come from values.yaml file
+- Helm Chart Structure
+    - Chart.yaml: Metadata about the chart
+    - values.yaml: Default values for the chart
+    - templates: K8s YAML templates
+    - charts: Dependencies for the chart
+    - helpers: Helper files for the templates
+    - .helmignore: Files to ignore when packaging the chart
+    - .helm: Internal helm files
+- Release Management
+    - Release: Instance of a chart running in a k8s cluster
+    - Release name: Name of the release
+    - Release revision: Version of the release
+    - Release status: Status of the release
+    - Release namespace: Namespace where the release is running
+    - Release history: History of the release
+    - Tiller stores the history of each release configuration. But Helm 3 doesn't have tiller 
+        - Because of security issues
+        - Tiller has too much power inside of the cluster
+        - Helm 3 is more secure
+
+
+Kubernetes Volumns
+- Persistent Volume
+- Persistent Volume Claim: 
+- Storage Class: SC provisions Persistent dynamically when PVC claims it
+    - Created using yaml configh
+    - via provisioner attribute
+    - each storage backend has own provisioner
+
+- You need to creaate and manage the storage
+- k8s just attaches the storage to the pod
+
+
+Persistent Volume YAML example
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-vol1
+spec:
+    capacity:
+        storage: 1Gi
+    volumeMode: Filesystem
+    accessModes:
+        - ReadWriteOnce
+    persistentVolumeReclaimPolicy: Recycle
+    storageClassName: slow
+    mountOptions:
+        - hard
+        - nfsvers=4.1
+    nfs:
+        path: /tmp
+        server: nfs-server.default.svc.cluster.local
+
+Persistent Volume lifecycle isn't tied to other component's lifecycle
+
+
+- Pods claims storage via PVC
+- PVC requests storage from SC
+- SC creates PC that meets the needs of the claim
+
+
+Kubernetes StatefulSet
+- For stateful applications like DB
+- Ensures that each pod has a unique identity
+- Deploying stateful application is more complex than deploying stateless application
+- StatefulSet is used for deploying stateful applications
+
+
+Deployment vs StatefulSet
+- Deployment
+    - Stateless
+    - No unique identity
+    - No stable network ID
+    - No stable storage
+    - No ordered deployment
+
+- StatefulSet
+    - Stateful
+    - Unique identity
+    - Stable network ID
+    - Stable storage
+    - Ordered deployment
+    - 2 characteristics
+        - predictable pod names
+        - fixed individual DNS names
+        - sticky identity
+
+Stateful applications are not perfect for containerized environments
+
+
+Kubernetes services
+- Stable IP address
+- Load balancing
+- loose coupling
+- Service types
+    - ClusterIP: Exposes the service on a cluster-internal IP
+    - NodePort: Exposes the service on each Node's IP at a static port
+    - LoadBalancer: Exposes the service externally using a cloud provider's load balancer
+    - ExternalName: Maps a service to a DNS name
